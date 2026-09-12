@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  passwordHash  String
+  role          String    @default("STUDENT") // STUDENT, ADMIN
+  attempts      Attempt[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Section {
+  id        String   @id @default(cuid())
+  name      String   // e.g., "தமிழ்", "பொது அறிவு"
+  order     Int
+  units     Unit[]
+}
+
+model Unit {
+  id        String   @id @default(cuid())
+  name      String   // e.g., "இலக்கணம்", "பொது அறிவியல்"
+  sectionId String
+  section   Section  @relation(fields: [sectionId], references: [id])
+  order     Int
+  topics    Topic[]
+}
+
+model Topic {
+  id        String     @id @default(cuid())
+  name      String     // e.g., "பொருத்துதல்", "திருக்குறள்"
+  unitId    String
+  unit      Unit       @relation(fields: [unitId], references: [id])
+  order     Int
+  questions Question[]
+}
+
+model Question {
+  id            String   @id @default(cuid())
+  text          String
+  options       String   // JSON string of exactly 4 options
+  correctAnswer Int      // 0, 1, 2, or 3
+  explanation   String?
+  difficulty    String   @default("medium") // easy, medium, hard
+  status        String   @default("draft") // draft, review, published, rejected
+  type          String   @default("mcq")
+  topicId       String
+  topic         Topic    @relation(fields: [topicId], references: [id])
+  attemptAnswers AttemptAnswer[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Attempt {
+  id        String          @id @default(cuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id])
+  testType  String          // "topic", "mock", "daily"
+  topicId   String?         // If topic practice
+  score     Int             @default(0)
+  totalQs   Int
+  startTime DateTime        @default(now())
+  endTime   DateTime?
+  status    String          @default("in_progress") // in_progress, completed
+  answers   AttemptAnswer[]
+}
+
+model AttemptAnswer {
+  id             String   @id @default(cuid())
+  attemptId      String
+  attempt        Attempt  @relation(fields: [attemptId], references: [id])
+  questionId     String
+  question       Question @relation(fields: [questionId], references: [id])
+  selectedOption Int?     // Null if skipped
+  isCorrect      Boolean  @default(false)
+}
